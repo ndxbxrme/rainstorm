@@ -28,7 +28,6 @@
   "dependencies": {
     "express": "^4.17.1",
     "glob": "^7.1.6",
-    "ogid": "git+https://github.com/ndxbxrme/ogid.git",
-    "rsdb": "git+https://github.com/ndxbxrme/rsdb.git"
+    "ogid": "git+https://github.com/ndxbxrme/ogid.git"
   }
 }

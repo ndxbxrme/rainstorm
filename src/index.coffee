@@ -8,12 +8,12 @@ console.log ogid()
 
 app = express()
 apps = {}
-base = process.cwd()
-if not /[\\\/]+server^/.test base
-  base = path.join base, 'server'
+base = path.join process.cwd(), 'build'
 module.exports = 
   apps: apps
   app: (config) ->
+    config = config or {}
+    config.root = config.root or ''
     console.log 'configgin', config
     proxyFn = (method) ->
       ->
@@ -23,18 +23,20 @@ module.exports =
         app[method].apply app, arguments
         @
     rainstorm = 
-      database: (config.dbEngine or require('rsdb') or {}) config
+      static: express.static
+      database: (config.dbEngine or {}) config
       root: config.root
       config: config
       base: base
       service: (fn) ->
         fn rainstorm
         @
+    rainstorm.db = rainstorm.database
     rainstorm[method] = proxyFn method for method in ['all', 'use', 'get', 'post', 'put', 'delete']
-    for folder in ['services', 'controllers']
-      modules = glob.sync path.join base, "#{folder}/**/*.js" 
-      for module in modules
-        require(module) rainstorm
+    #for folder in ['services', 'controllers']
+    #  modules = glob.sync path.join base, "#{folder}/**/*.js" 
+    #  for module in modules
+    #    require(module) rainstorm
     subapps = glob.sync path.join base, '../apps/*/server/app.js'
     if not config.root
       app.get '*', (req, res, next) ->

@@ -18,16 +18,14 @@
 
   apps = {};
 
-  base = process.cwd();
-
-  if (!/[\\\/]+server^/.test(base)) {
-    base = path.join(base, 'server');
-  }
+  base = path.join(process.cwd(), 'build');
 
   module.exports = {
     apps: apps,
     app: function(config) {
-      var folder, i, j, k, l, len, len1, len2, len3, method, module, modules, proxyFn, rainstorm, ref, ref1, server, subapp, subapps;
+      var i, j, len, len1, method, proxyFn, rainstorm, ref, server, subapp, subapps;
+      config = config || {};
+      config.root = config.root || '';
       console.log('configgin', config);
       proxyFn = function(method) {
         return function() {
@@ -40,7 +38,8 @@
         };
       };
       rainstorm = {
-        database: (config.dbEngine || require('rsdb') || {})(config),
+        static: express.static,
+        database: (config.dbEngine || {})(config),
         root: config.root,
         config: config,
         base: base,
@@ -49,20 +48,16 @@
           return this;
         }
       };
+      rainstorm.db = rainstorm.database;
       ref = ['all', 'use', 'get', 'post', 'put', 'delete'];
       for (i = 0, len = ref.length; i < len; i++) {
         method = ref[i];
         rainstorm[method] = proxyFn(method);
       }
-      ref1 = ['services', 'controllers'];
-      for (j = 0, len1 = ref1.length; j < len1; j++) {
-        folder = ref1[j];
-        modules = glob.sync(path.join(base, `${folder}/**/*.js`));
-        for (k = 0, len2 = modules.length; k < len2; k++) {
-          module = modules[k];
-          require(module)(rainstorm);
-        }
-      }
+      //for folder in ['services', 'controllers']
+      //  modules = glob.sync path.join base, "#{folder}/**/*.js" 
+      //  for module in modules
+      //    require(module) rainstorm
       subapps = glob.sync(path.join(base, '../apps/*/server/app.js'));
       if (!config.root) {
         app.get('*', function(req, res, next) {
@@ -80,8 +75,8 @@
           console.log(req.url);
           return next('route');
         });
-        for (l = 0, len3 = subapps.length; l < len3; l++) {
-          subapp = subapps[l];
+        for (j = 0, len1 = subapps.length; j < len1; j++) {
+          subapp = subapps[j];
           base = path.dirname(subapp);
           require(subapp);
         }
