@@ -52,6 +52,7 @@ module.exports =
         root = _root
         base = path.join process.cwd(), _base
         require base
+        @
     rainstorm.db = rainstorm.database
     rainstorm[method] = proxyFn method for method in ['all', 'use', 'get', 'post', 'put', 'delete']
     if not root
