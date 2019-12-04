@@ -67,7 +67,7 @@
       rainstorm = {
         name: pkg.name,
         static: express.static,
-        database: (config.dbEngine || {})(config),
+        database: (config.dbEngine || function() {})(config),
         root: config.root,
         config: config,
         base: config.base,
