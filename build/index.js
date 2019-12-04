@@ -79,7 +79,8 @@
         subapp: function(_root, _base) {
           root = _root;
           base = path.join(process.cwd(), _base);
-          return require(base);
+          require(base);
+          return this;
         }
       };
       rainstorm.db = rainstorm.database;
