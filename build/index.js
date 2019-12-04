@@ -1,8 +1,10 @@
 (function() {
   'use strict';
-  var app, apps, base, express, glob, http, ogid, path;
+  var app, apps, base, bodyParser, compression, express, fetchTemplate, fs, glob, helmet, http, ogid, path, pug, root, server, socket;
 
   express = require('express');
+
+  fs = require('fs-extra');
 
   http = require('http');
 
@@ -12,40 +14,72 @@
 
   ogid = require('ogid');
 
-  console.log(ogid());
+  compression = require('compression');
+
+  bodyParser = require('body-parser');
+
+  helmet = require('helmet');
+
+  pug = require('pug');
 
   app = express();
 
   apps = {};
 
-  base = path.join(process.cwd(), 'build');
+  base = process.cwd();
+
+  root = '';
+
+  server = null;
+
+  socket = null;
+
+  fetchTemplate = async function(templateName, appBase) {
+    var templatePath;
+    templatePath = path.join(appBase, 'templates', templateName);
+    if ((await fs.exists(templatePath))) {
+      return fs.readFile(templatePath, 'utf8');
+    }
+    templatePath = path.join(__dirname, '../templates', templateName);
+    if ((await fs.exists(templatePath))) {
+      return fs.readFile(templatePath, 'utf8');
+    }
+    return 'p missing template';
+  };
 
   module.exports = {
     apps: apps,
     app: function(config) {
-      var i, j, len, len1, method, proxyFn, rainstorm, ref, server, subapp, subapps;
+      var i, len, method, pkg, port, proxyFn, rainstorm, ref;
       config = config || {};
-      config.root = config.root || '';
-      console.log('configgin', config);
+      config.root = root || '';
+      config.base = base || '';
       proxyFn = function(method) {
         return function() {
           var url;
           url = config.root + arguments[0];
-          console.log('configuring route', url);
           arguments[0] = url;
           app[method].apply(app, arguments);
           return this;
         };
       };
+      pkg = require(path.join(config.base, 'package.json'));
       rainstorm = {
+        name: pkg.name,
         static: express.static,
         database: (config.dbEngine || {})(config),
         root: config.root,
         config: config,
-        base: base,
+        base: config.base,
+        serverId: ogid(23),
         service: function(fn) {
           fn(rainstorm);
           return this;
+        },
+        subapp: function(_root, _base) {
+          root = _root;
+          base = path.join(process.cwd(), _base);
+          return require(base);
         }
       };
       rainstorm.db = rainstorm.database;
@@ -54,40 +88,57 @@
         method = ref[i];
         rainstorm[method] = proxyFn(method);
       }
-      //for folder in ['services', 'controllers']
-      //  modules = glob.sync path.join base, "#{folder}/**/*.js" 
-      //  for module in modules
-      //    require(module) rainstorm
-      subapps = glob.sync(path.join(base, '../apps/*/server/app.js'));
-      if (!config.root) {
+      if (!root) {
         app.get('*', function(req, res, next) {
           var fullurl, key, rs, subapp;
           fullurl = req.hostname + req.url;
           rs = null;
           for (key in apps) {
             subapp = apps[key];
-            if (fullurl.indexOf(key) === 0) {
+            if (new RegExp(key).test(fullurl)) {
               req.url = key + fullurl.replace(key, '');
               req.rs = subapp;
               break;
             }
           }
-          console.log(req.url);
+          req.rs = req.rs || apps['rsdefault'];
           return next('route');
         });
-        for (j = 0, len1 = subapps.length; j < len1; j++) {
-          subapp = subapps[j];
-          base = path.dirname(subapp);
-          require(subapp);
-        }
+        this.apps['rsdefault'] = rainstorm;
+        port = config.port || process.env.PORT || 3000;
         server = http.createServer(app);
-        server.listen(3000, function() {
-          return console.log('started');
+        server.listen(port, function() {
+          return console.log('rainstorm started on port ' + port);
         });
+        rainstorm.server = server;
+        if (config.socket) {
+          config.socket(rainstorm);
+          socket = rainstorm.socket;
+          socket.setup(rainstorm);
+        }
       } else {
-        console.log('loaded', config.root);
-        this.apps[config.root] = rainstorm;
+        rainstorm.server = server;
+        rainstorm.socket = socket;
+        if (socket) {
+          socket.setup(rainstorm);
+        }
+        this.apps[root] = rainstorm;
       }
+      rainstorm.get('/register-app', async function(req, res, next) {
+        var template;
+        template = (await fetchTemplate('register-app.pug', req.rs.base));
+        res.writeHead(200, {
+          'Content-Type': 'text/html'
+        });
+        return res.end(pug.render(template, {
+          apps: apps
+        }));
+      });
+      rainstorm.use('*', compression());
+      rainstorm.use('*', helmet());
+      rainstorm.use('*', bodyParser.json({
+        limit: config.bodyParser || '50mb'
+      }));
       return rainstorm;
     }
   };
