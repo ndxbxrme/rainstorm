@@ -40,7 +40,7 @@ module.exports =
     rainstorm = 
       name: pkg.name
       static: express.static
-      database: (config.dbEngine or {}) config
+      database: (config.dbEngine or () ->) config
       root: config.root
       config: config
       base: config.base
