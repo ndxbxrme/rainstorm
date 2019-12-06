@@ -90,6 +90,7 @@
         rainstorm[method] = proxyFn(method);
       }
       if (!root) {
+        console.log('noroot');
         app.get('*', function(req, res, next) {
           var fullurl, key, rs, subapp;
           fullurl = req.hostname + req.url;
@@ -118,6 +119,7 @@
           socket.setup(rainstorm);
         }
       } else {
+        console.log('got a root', root);
         rainstorm.server = server;
         rainstorm.socket = socket;
         if (socket) {
