@@ -72,6 +72,22 @@
         config: config,
         base: config.base,
         serverId: ogid(23),
+        authenticate: function(role) {
+          return function(req, res, next) {
+            var i, len, r, ref, ref1;
+            if (req.user && !role) {
+              return next();
+            }
+            ref = role != null;
+            for (i = 0, len = ref.length; i < len; i++) {
+              r = ref[i];
+              if ((ref1 = req.user.role) != null ? ref1.includes(r) : void 0) {
+                return next();
+              }
+            }
+            return res.status(200).end('unauthorized');
+          };
+        },
         service: function(fn) {
           fn(rainstorm);
           return this;
@@ -90,7 +106,6 @@
         rainstorm[method] = proxyFn(method);
       }
       if (!root) {
-        console.log('noroot');
         app.get('*', function(req, res, next) {
           var fullurl, key, rs, subapp;
           fullurl = req.hostname + req.url;
@@ -119,7 +134,6 @@
           socket.setup(rainstorm);
         }
       } else {
-        console.log('got a root', root);
         rainstorm.server = server;
         rainstorm.socket = socket;
         if (socket) {

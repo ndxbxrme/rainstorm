@@ -45,11 +45,17 @@ module.exports =
       config: config
       base: config.base
       serverId: ogid 23
+      authenticate: (role) ->
+        (req, res, next) ->
+          return next() if req.user and not role
+          for r in role?
+            return next() if req.user.role?.includes r
+          res.status 200
+          .end 'unauthorized'
       service: (fn) ->
         fn rainstorm
         @
       subapp: (_root, _base) ->
-        console.log 'starting subapp'
         root = _root
         base = path.join process.cwd(), _base
         require base
@@ -57,7 +63,6 @@ module.exports =
     rainstorm.db = rainstorm.database
     rainstorm[method] = proxyFn method for method in ['all', 'use', 'get', 'post', 'put', 'delete']
     if not root
-      console.log 'noroot'
       app.get '*', (req, res, next) ->
         fullurl = req.hostname + req.url
         rs = null
@@ -79,7 +84,6 @@ module.exports =
         socket = rainstorm.socket
         socket.setup rainstorm
     else
-      console.log 'got a root', root
       rainstorm.server = server
       rainstorm.socket = socket
       socket.setup rainstorm if socket
